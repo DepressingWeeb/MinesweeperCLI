@@ -1,14 +1,25 @@
 #include <iostream>
+
 #include <vector>
+
 #include <set>
+
 #include <cstdlib>
+
 #include <time.h>
+
 #include <Windows.h>
+
 #include <iomanip>
+
 #include <fstream>
+
 using namespace std;
 void ClearScreen() {
-	COORD topLeft = { 0, 0 };
+	COORD topLeft = {
+	  0,
+	  0
+	};
 	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_SCREEN_BUFFER_INFO screen;
 	DWORD written;
@@ -23,186 +34,179 @@ void ClearScreen() {
 	);
 	SetConsoleCursorPosition(console, topLeft);
 }
-void Color(int color)
-{
+void Color(int color) {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
 }
 
-void SetConsoleWidthAndHeight(int left,int top,int width,int height) {
+void SetConsoleWidthAndHeight(int left, int top, int width, int height) {
 	HWND console = GetConsoleWindow();
 	MoveWindow(console, left, top, width, height, TRUE);
-
 }
 
 class Grid {
-	public:
-		int rows;
-		int cols;
-		int bomb_number;
-		bool lose;
-		vector<vector<bool>> visible;
-		vector<vector<bool>> flag;
-		vector<vector<int>> grid_content;
-		Grid() {}
-		Grid(int n_rows,int n_cols,int bomb_number){
-			this->rows = n_rows;
-			this->cols = n_cols;
-			this->bomb_number = bomb_number;
-			this->lose = false;
-			this->visible= vector<vector<bool>>(n_rows, vector<bool>(n_cols, false));
-			this->flag = vector<vector<bool>>(n_rows, vector<bool>(n_cols, false));
-			this->grid_content = init_grid_content(n_rows, n_cols, bomb_number);
-			//print_grid_content();
-			//cout << "\n";
+public:
+	int rows;
+	int cols;
+	int bomb_number;
+	bool lose;
+	vector < vector < bool >> visible;
+	vector < vector < bool >> flag;
+	vector < vector < int >> grid_content;
+	Grid() {}
+	Grid(int n_rows, int n_cols, int bomb_number) {
+		this->rows = n_rows;
+		this->cols = n_cols;
+		this->bomb_number = bomb_number;
+		this->lose = false;
+		this->visible = vector < vector < bool >>(n_rows, vector < bool >(n_cols, false));
+		this->flag = vector < vector < bool >>(n_rows, vector < bool >(n_cols, false));
+		this->grid_content = init_grid_content(n_rows, n_cols, bomb_number);
+		//print_grid_content();
+		//cout << "\n";
+	}
 
+	static bool check_valid(int row, int col, int n_rows, int n_cols) {
+		return row >= 0 && row < n_rows&& col >= 0 && col < n_cols;
+	}
+
+	static vector < vector < int >> init_grid_content(int rows, int cols, int bomb_number) {
+		vector < vector < int >> grid_content(rows, vector < int >(cols, 0));
+		set < pair < int, int >> bomb_coordinate;
+		int row, col, intersect;
+		srand(time(0));
+		while (true) {
+			row = rand() % rows;
+			col = rand() % cols;
+			bomb_coordinate.insert(make_pair(row, col));
+			if (bomb_coordinate.size() >= bomb_number) break;
 		}
-
-		static bool check_valid(int row, int col, int n_rows, int n_cols) {
-			return row >= 0 && row < n_rows && col >= 0 && col < n_cols;
-		}
-
-		static vector<vector<int>> init_grid_content(int rows, int cols, int bomb_number) {
-			vector<vector<int>> grid_content(rows, vector<int>(cols, 0));
-			set<pair<int, int>> bomb_coordinate;
-			int row, col, intersect;
-			srand(time(0));
-			while (true) {
-				row = rand() % rows;
-				col = rand() % cols;
-				bomb_coordinate.insert(make_pair(row, col));
-				if (bomb_coordinate.size() >= bomb_number) break;
-			}
-			for (int i = 0; i < rows; i++) {
-				for (int j = 0; j < cols; j++) {
-					if (bomb_coordinate.find(make_pair(i, j)) != bomb_coordinate.end()) {
-						grid_content[i][j] = -1;
-						continue;
-					}
-					set<pair<int, int>> adjacent = {
-						make_pair(i - 1,j - 1),make_pair(i - 1,j),make_pair(i - 1,j + 1),
-						make_pair(i,j - 1),make_pair(i,j + 1),
-						make_pair(i + 1,j - 1),make_pair(i + 1,j),make_pair(i + 1,j + 1)
-					};
-					intersect = 0;
-					for (auto p : adjacent) {
-						if (bomb_coordinate.find(p) != bomb_coordinate.end()) intersect++;
-					}
-					grid_content[i][j] = intersect;
-				}
-			}
-			return grid_content;
-
-		}
-
-		void print_grid_current() {
-			cout << "      ";
-			for (int i = 0; i < cols; i++) {
-				if (i < 10) cout << "   " << i << "  ";
-				else cout << "  " << i << "  ";
-			}
-			cout << endl;
-
-
-
-			for (int i = 0; i < rows*2+1; i++) {
-				if (i % 2 == 0) {
-					cout << "      ";
-					for (int k = 0; k < cols * 6+1; k++) {
-						if (k % 6 == 0) {
-							cout << '+';
-							continue;
-						}
-						cout << '-';
-					}
-					cout << '\n';
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				if (bomb_coordinate.find(make_pair(i, j)) != bomb_coordinate.end()) {
+					grid_content[i][j] = -1;
 					continue;
 				}
-				if ((i - 1) / 2 < 10) cout << (i - 1) / 2 << "     ";
-				else cout << (i - 1) / 2 << "    ";
-				for (int j = 0; j < cols; j++) {
+				set < pair < int, int >> adjacent = {
+				  make_pair(i - 1, j - 1),
+				  make_pair(i - 1, j),
+				  make_pair(i - 1, j + 1),
+				  make_pair(i, j - 1),
+				  make_pair(i, j + 1),
+				  make_pair(i + 1, j - 1),
+				  make_pair(i + 1, j),
+				  make_pair(i + 1, j + 1)
+				};
+				intersect = 0;
+				for (auto p : adjacent) {
+					if (bomb_coordinate.find(p) != bomb_coordinate.end()) intersect++;
+				}
+				grid_content[i][j] = intersect;
+			}
+		}
+		return grid_content;
+	}
 
-					cout << "|  ";
-					if (visible[(i-1)/2][j]) {
-						if (grid_content[(i - 1) / 2][j]==0)
-						{
-							cout << "   ";
-						}
-						else {
-							int content = grid_content[(i - 1) / 2][j];
-							if (content == -1) {
-								Color(75);
-								cout << "b  " ;
-								Color(7);
+	void print_grid_current() {
+		cout << "      ";
+		for (int i = 0; i < cols; i++) {
+			if (i < 10) cout << "   " << i << "  ";
+			else cout << "  " << i << "  ";
+		}
+		cout << endl;
 
-							}
-							else {
-								Color(content + 8);
-								cout << content << "  ";
-								Color(7);
-							}
-						}
+		for (int i = 0; i < rows * 2 + 1; i++) {
+			if (i % 2 == 0) {
+				cout << "      ";
+				for (int k = 0; k < cols * 6 + 1; k++) {
+					if (k % 6 == 0) {
+						cout << '+';
+						continue;
 					}
-					else if (flag[(i-1)/2][j]) {
-						Color(4);
-						cout << "F  ";
-						Color(7);
+					cout << '-';
+				}
+				cout << '\n';
+				continue;
+			}
+			if ((i - 1) / 2 < 10) cout << (i - 1) / 2 << "     ";
+			else cout << (i - 1) / 2 << "    ";
+			for (int j = 0; j < cols; j++) {
+				cout << "|  ";
+				if (visible[(i - 1) / 2][j]) {
+					if (grid_content[(i - 1) / 2][j] == 0) {
+						cout << "   ";
 					}
 					else {
-						cout << "X  ";
+						int content = grid_content[(i - 1) / 2][j];
+						if (content == -1) {
+							Color(75);
+							cout << "b  ";
+							Color(7);
+						}
+						else {
+							Color(content + 8);
+							cout << content << "  ";
+							Color(7);
+						}
 					}
 				}
-				cout << '|'<<'\n';
-			}
-
-
-
-		}
-		void recur(int row,int col){
-			//cout << row << " " << col << endl;
-			if (check_valid(row, col, rows, cols) == false) { return; }
-			else if (visible[row][col]) { return; }
-			else if (grid_content[row][col] > 0) { visible[row][col] = true; }
-			else if (grid_content[row][col] == 0) {
-				visible[row][col] = true;
-				recur(row - 1, col - 1);
-				recur(row - 1, col);
-				recur(row - 1, col+1);
-				recur(row, col - 1);
-				recur(row, col + 1);
-				recur(row + 1, col - 1);
-				recur(row + 1, col );
-				recur(row + 1, col + 1);
-			}
-			else {
-				cout << "find bomb"<<endl;
-				lose = true;
-				for (int i = 0; i < rows; i++) {
-					for (int j = 0; j < cols; j++) {
-						visible[i][j] = true;
-					}
+				else if (flag[(i - 1) / 2][j]) {
+					Color(4);
+					cout << "F  ";
+					Color(7);
 				}
-
+				else {
+					cout << "X  ";
+				}
 			}
-
-		
-		
+			cout << '|' << '\n';
 		}
-
-		bool check_win() {
+	}
+	void recur(int row, int col) {
+		//cout << row << " " << col << endl;
+		if (check_valid(row, col, rows, cols) == false) {
+			return;
+		}
+		else if (visible[row][col]) {
+			return;
+		}
+		else if (grid_content[row][col] > 0) {
+			visible[row][col] = true;
+		}
+		else if (grid_content[row][col] == 0) {
+			visible[row][col] = true;
+			recur(row - 1, col - 1);
+			recur(row - 1, col);
+			recur(row - 1, col + 1);
+			recur(row, col - 1);
+			recur(row, col + 1);
+			recur(row + 1, col - 1);
+			recur(row + 1, col);
+			recur(row + 1, col + 1);
+		}
+		else {
+			cout << "find bomb" << endl;
+			lose = true;
 			for (int i = 0; i < rows; i++) {
 				for (int j = 0; j < cols; j++) {
-					if (not visible[i][j] && grid_content[i][j] > -1) return false;
+					visible[i][j] = true;
 				}
-
 			}
-			return true;
 		}
+	}
 
-		bool check_lose() { return lose; }
+	bool check_win() {
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				if (not visible[i][j] && grid_content[i][j] > -1) return false;
+			}
+		}
+		return true;
+	}
 
+	bool check_lose() {
+		return lose;
+	}
 };
-
-
 
 Grid Introduction() {
 	int difficulty;
@@ -232,7 +236,7 @@ Grid Introduction() {
 		return Grid(16, 16, 40);
 	}
 	else {
-		int rows, cols,bombNumber;
+		int rows, cols, bombNumber;
 		while (true) {
 			cout << "Input the number of rows (1->99) : ";
 			cin >> rows;
@@ -242,15 +246,12 @@ Grid Introduction() {
 			cout << endl;
 			cout << "Input the number of bombs : ";
 			cin >> bombNumber;
-			if (rows < 1 || rows>99 || cols < 1 || cols>99 || bombNumber >= rows * cols) cout << "Invalid input. Please type again" << endl;
+			if (rows < 1 || rows > 99 || cols < 1 || cols > 99 || bombNumber >= rows * cols) cout << "Invalid input. Please type again" << endl;
 			else break;
-
 		}
 		ClearScreen();
 		return Grid(rows, cols, bombNumber);
 	}
-
-
 }
 
 string Command() {
@@ -260,7 +261,7 @@ string Command() {
 	cin >> command;
 	return command;
 }
-void setFlag(Grid *grid) {
+void setFlag(Grid* grid) {
 	int row, col;
 	while (true) {
 		cout << "Type the x-th row that you want to set flag : ";
@@ -288,11 +289,11 @@ void revealSquare(Grid* grid) {
 
 void saveGame(Grid* grid) {
 	FILE* stream;
-	freopen_s(&stream,"save.txt", "w", stdout);
-	cout << grid->rows << " " << grid->cols<<" "<<grid->bomb_number<<endl;
+	freopen_s(&stream, "save.txt", "w", stdout);
+	cout << grid->rows << " " << grid->cols << " " << grid->bomb_number << endl;
 	for (int i = 0; i < grid->rows; i++) {
 		for (int j = 0; j < grid->cols; j++) {
-			cout << grid->grid_content[i][j]<<" ";
+			cout << grid->grid_content[i][j] << " ";
 		}
 		cout << endl;
 	}
@@ -308,8 +309,6 @@ void saveGame(Grid* grid) {
 		}
 		cout << endl;
 	}
-
-
 }
 
 Grid loadGameSave() {
@@ -340,7 +339,6 @@ Grid loadGameSave() {
 	}
 	freopen_s(&stream, "CON", "r", stdin);
 	return grid;
-
 }
 inline bool is_exist(const string& name) {
 	ifstream f(name.c_str());
@@ -355,8 +353,14 @@ void Game() {
 		cout << "Found a game save from last time. Do you want to continue from save?(y/n)";
 		while (true) {
 			cin >> ans;
-			if (ans == "y") { grid = loadGameSave(); break; }
-			else if (ans == "n") { grid = Introduction(); break; }
+			if (ans == "y") {
+				grid = loadGameSave();
+				break;
+			}
+			else if (ans == "n") {
+				grid = Introduction();
+				break;
+			}
 			else {
 				cout << endl << "Invalid input. Please type again(y/n) : ";
 			}
@@ -367,12 +371,12 @@ void Game() {
 	}
 	ClearScreen();
 	string command;
-	clock_t prev,now;
+	clock_t prev, now;
 	prev = clock();
 	while (true) {
 		now = clock();
 		double gap = ((double)now - (double)prev) / double(CLOCKS_PER_SEC);
-		cout << "----------------------------------------------------------Timer : " << fixed << gap << setprecision(5)<<"----------------------------------------------------------"<<endl;
+		cout << "----------------------------------------------------------Timer : " << fixed << gap << setprecision(5) << "----------------------------------------------------------" << endl;
 		grid.print_grid_current();
 		if (grid.check_lose()) {
 			cout << "Aha , seems like you have lose. Do you want to play a new game? (y/n) ";
@@ -396,7 +400,7 @@ void Game() {
 				}
 			}
 		}
-		command=Command();
+		command = Command();
 		if (command == "f") {
 			setFlag(&grid);
 		}
@@ -416,13 +420,11 @@ void Game() {
 		}
 		Sleep(1000);
 		ClearScreen();
-
 	}
-
 }
 
 int main() {
-	SetConsoleWidthAndHeight(0,0,1200,800);
+	SetConsoleWidthAndHeight(0, 0, 1200, 800);
 	Game();
 	return 0;
 }
