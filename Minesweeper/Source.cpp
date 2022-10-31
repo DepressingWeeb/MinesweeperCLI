@@ -14,6 +14,7 @@
 
 #include <fstream>
 
+#include <thread>
 using namespace std;
 
 void ClearScreen() {
@@ -182,7 +183,6 @@ public:
 			recur(row + 1, col + 1);
 		}
 		else {
-			cout << "find bomb" << endl;
 			lose = true;
 			for (int i = 0; i < rows; i++) {
 				for (int j = 0; j < cols; j++) {
@@ -242,9 +242,9 @@ Grid Introduction() {
 			cout << "Input the number of cols(1->99) : ";
 			cin >> cols;
 			cout << endl;
-			cout << "Input the number of bombs : ";
+			cout << "Input the number of bombs (1->rows*cols): ";
 			cin >> bombNumber;
-			if (rows < 1 || rows > 99 || cols < 1 || cols > 99 || bombNumber >= rows * cols) cout << "Invalid input. Please type again" << endl;
+			if (rows < 1 || rows > 99 || cols < 1 || cols > 99 || bombNumber > rows * cols||bombNumber<1) cout << "Invalid input. Please type again" << endl;
 			else break;
 		}
 		ClearScreen();
@@ -343,7 +343,73 @@ inline bool isExist(const string& name) {
 	return f.good();
 }
 
+COORD GetConsoleCursorPosition(HANDLE hConsoleOutput)
+{
+	CONSOLE_SCREEN_BUFFER_INFO cbsi;
+	if (GetConsoleScreenBufferInfo(hConsoleOutput, &cbsi))
+	{
+		return cbsi.dwCursorPosition;
+	}
+	else
+	{
+		// The function failed. Call GetLastError() for details.
+		COORD invalid = { 0, 0 };
+		return invalid;
+	}
+}
+void gotoxy(int x, int y) {
+	COORD pos = { x, y };
+	HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleCursorPosition(output, pos);
+}
+bool KeyEventProc(Grid* grid)
+{	
+	//xStart=9,yStart=3
+	//0,0:9,3
+	//1,0=9,5
+	//=>y=3+2*row=>(y-3)/2=row
+	//=>(x-9)/6=col
+	//<=>col*6+9=x
+	COORD pos = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
+	if (GetKeyState(VK_RIGHT) & 0x8000) { gotoxy(min(pos.X + 6,(grid->cols-1)*6+9), pos.Y); }
+	if (GetKeyState(VK_LEFT) & 0x8000) { gotoxy(max(pos.X - 6,9), pos.Y); }
+	if (GetKeyState(VK_UP) & 0x8000) { gotoxy(pos.X, max(pos.Y - 2,3)); }
+	if (GetKeyState(VK_DOWN) & 0x8000) { gotoxy(pos.X, min(pos.Y + 2,(grid->rows-1)*2+3)); }
+	if (GetKeyState('R') & 0x8000) {
+		int row = (pos.Y - 3) / 2;
+		int col = (pos.X - 9) / 6;
+		grid->recur(row, col);
+		return true;
+	}
+	if (GetKeyState('F') & 0x8000) {
+		int row = (pos.Y - 3) / 2;
+		int col = (pos.X - 9) / 6;
+		grid->flag[row][col]=true;
+		return true;
+	}
+	if (GetKeyState('S') & 0x8000) {
+		saveGame(grid);
+		exit(0);
+		return false;
+	}
+	if (GetKeyState('N') & 0x8000) {
+		return false;
+	}
+	return false;
+}
+
+void gameByCommand();
+void gameByKey();
 void Game() {
+	string choice;
+	cout << "Do you want to navigate by command or by keyboard?(c/k) : ";
+	cin >> choice;
+	if (choice == "c") gameByCommand();
+	else if (choice == "k") gameByKey();
+	else cout << "Invalid" << endl;
+	
+}
+void gameByCommand() {
 	Grid grid;
 	FILE* stream;
 	string ans;
@@ -416,11 +482,92 @@ void Game() {
 		else {
 			cout << "Command invalid" << endl;
 		}
-		Sleep(1000);
 		ClearScreen();
 	}
 }
+void setTimer(double time) {
+	COORD oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
+	gotoxy(66, 0);
+	cout << fixed << time << setprecision(5);
+	gotoxy(oldCoord.X, oldCoord.Y);
+	return;
+}
+void gameByKey() {
+	Grid grid;
+	FILE* stream;
+	string ans;
+	if (isExist("save.txt")) {
+		cout << "Found a game save from last time. Do you want to continue from save?(y/n)";
+		while (true) {
+			cin >> ans;
+			if (ans == "y") {
+				grid = loadGameSave();
+				break;
+			}
+			else if (ans == "n") {
+				grid = Introduction();
+				break;
+			}
+			else {
+				cout << endl << "Invalid input. Please type again(y/n) : ";
+			}
+		}
+	}
+	else {
+		grid = Introduction();
+	}
+	ClearScreen();
+	string command;
+	clock_t prev, now;
+	prev = clock();
+	bool isChange = false;
+	int delay = 0;
+	cout << "----------------------------------------------------------Timer : " << fixed << ((double)clock() - (double)prev) / double(CLOCKS_PER_SEC) << setprecision(5) << "----------------------------------------------------------" << endl;
+	grid.printGridCurrent();
+	gotoxy(9, 3);
+	while (true) {
+		setTimer(((double)clock() - (double)prev) / double(CLOCKS_PER_SEC));
+		if (isChange) {
+			COORD oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
+			gotoxy(0, 1);
+			grid.printGridCurrent();
+			isChange = false;
+			gotoxy(oldCoord.X, oldCoord.Y);
+		}
+		if (grid.checkLose()) {
+			gotoxy(0, 4 + 2 * grid.rows);
+			cout << "Aha , seems like you have lose. Do you want to play a new game? (y/n) ";
+			while (true) {
+				cin >> ans;
+				if (ans == "y") Game();
+				else if (ans == "n") exit(0);
+				else {
+					cout << endl << "Invalid input. Please type again(y/n) : ";
+				}
+			}
+		}
+		else if (grid.checkWin()) {
+			gotoxy(0, 4 + 2 * grid.rows);
+			cout << "Congratulations,you have won .Do you want to play new game or quit?(y/n) : ";
+			while (true) {
+				cin >> ans;
+				if (ans == "y") Game();
+				else if (ans == "n") exit(0);
+				else {
+					cout << endl << "Invalid input. Please type again(y/n) : ";
+				}
+			}
+		}
+		if (delay == 0) {
+			isChange = KeyEventProc(&grid);
+			delay = -2;
+		}
+		else delay++;
 
+		Sleep(30);
+	}
+	return;
+}
 int main() {
 	SetConsoleWidthAndHeight(0, 0, 1200, 800);
 	Game();
