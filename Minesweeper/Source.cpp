@@ -1,8 +1,12 @@
-#include <iostream>
+﻿#include <iostream>
+
+#include <stdio.h>
 
 #include <vector>
 
 #include <set>
+
+#include <string>
 
 #include <cstdlib>
 
@@ -15,7 +19,24 @@
 #include <fstream>
 
 #include <thread>
+
+#include <mutex>
+
+#include <atomic>
+
+#include <chrono>
+
 using namespace std;
+using namespace std::chrono_literals;
+
+mutex mu;
+atomic <bool> exitFlag = false;
+
+void gotoxy(int x, int y) {
+	COORD pos = { x, y };
+	HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleCursorPosition(output, pos);
+}
 
 void ClearScreen() {
 	COORD topLeft = {
@@ -35,6 +56,14 @@ void ClearScreen() {
 		screen.dwSize.X * screen.dwSize.Y, topLeft, &written
 	);
 	SetConsoleCursorPosition(console, topLeft);
+}
+void ClearLines(COORD oldCoord,int nLines) {
+	for (int i = 0; i < nLines; i++) {
+		gotoxy(0, oldCoord.Y - i);
+		cout << "                                                                                                             ";
+
+		
+	}
 }
 void Color(int color) {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
@@ -107,58 +136,58 @@ public:
 	}
 
 	void printGridCurrent() {
-		cout << "      ";
+		printf("      ");
 		for (int i = 0; i < cols; i++) {
 			if (i < 10) cout << "   " << i << "  ";
-			else cout << "  " << i << "  ";
+			else printf("  %d  ",i);
 		}
-		cout << endl;
+		printf("\n");
 
 		for (int i = 0; i < rows * 2 + 1; i++) {
 			if (i % 2 == 0) {
-				cout << "      ";
+				printf("      ");
 				for (int k = 0; k < cols * 6 + 1; k++) {
 					if (k % 6 == 0) {
-						cout << '+';
+						printf("+");
 						continue;
 					}
-					cout << '-';
+					printf("-");
 				}
-				cout << '\n';
+				printf("\n");
 				continue;
 			}
-			if ((i - 1) / 2 < 10) cout << (i - 1) / 2 << "     ";
-			else cout << (i - 1) / 2 << "    ";
+			if ((i - 1) / 2 < 10) printf("%d     ", (i - 1) / 2);
+			else printf("%d    ", (i - 1) / 2);
 			for (int j = 0; j < cols; j++) {
-				cout << "|  ";
+				printf("|  ");
 				if (visible[(i - 1) / 2][j]) {
 					if (gridContent[(i - 1) / 2][j] == 0) {
-						cout << "   ";
+						printf("   ");
 					}
 					else {
 						int content = gridContent[(i - 1) / 2][j];
 						if (content == -1) {
 							Color(75);
-							cout << "b  ";
+							printf("b  ");
 							Color(7);
 						}
 						else {
 							Color(content + 8);
-							cout << content << "  ";
+							printf("%d  ",content);
 							Color(7);
 						}
 					}
 				}
 				else if (flag[(i - 1) / 2][j]) {
 					Color(4);
-					cout << "F  ";
+					printf("F  ");
 					Color(7);
 				}
 				else {
-					cout << "X  ";
+					printf("X  ");
 				}
 			}
-			cout << '|' << '\n';
+			printf("|\n");
 		}
 	}
 	void recur(int row, int col) {
@@ -207,7 +236,7 @@ public:
 };
 
 Grid Introduction() {
-	int difficulty;
+	string difficulty;
 	Color(9);
 	cout << "Welcome to the Minesweeper Command Line Interface. Here we have 4 difficulties for you to choose\n\n";
 	Color(7);
@@ -220,37 +249,41 @@ Grid Introduction() {
 	cout << "-> 4 : Difficulty Custom\n\n\n\n\n";
 	Color(7);
 	cout << "-> Please input your difficulty (1/2/3/4) : ";
-	cin >> difficulty;
-	if (difficulty == 1) {
-		ClearScreen();
-		return Grid(8, 8, 2);
-	}
-	else if (difficulty == 2) {
-		ClearScreen();
-		return Grid(12, 12, 12);
-	}
-	else if (difficulty == 3) {
-		ClearScreen();
-		return Grid(16, 16, 40);
-	}
-	else {
-		int rows, cols, bombNumber;
-		while (true) {
-			cout << "Input the number of rows (1->99) : ";
-			cin >> rows;
-			cout << endl;
-			cout << "Input the number of cols(1->99) : ";
-			cin >> cols;
-			cout << endl;
-			cout << "Input the number of bombs (1->rows*cols): ";
-			cin >> bombNumber;
-			if (rows < 1 || rows > 99 || cols < 1 || cols > 99 || bombNumber > rows * cols||bombNumber<1) cout << "Invalid input. Please type again" << endl;
-			else break;
+	while (true) {
+		cin >> difficulty;
+		if (difficulty == "1") {
+			ClearScreen();
+			return Grid(8, 8, 2);
 		}
-		ClearScreen();
-		return Grid(rows, cols, bombNumber);
+		else if (difficulty == "2") {
+			ClearScreen();
+			return Grid(12, 12, 12);
+		}
+		else if (difficulty == "3") {
+			ClearScreen();
+			return Grid(16, 16, 40);
+		}
+		else if (difficulty == "4") {
+			int rows, cols, bombNumber;
+			while (true) {
+				cout << "Input the number of rows (1->99) : ";
+				cin >> rows;
+				cout << endl;
+				cout << "Input the number of cols(1->99) : ";
+				cin >> cols;
+				cout << endl;
+				cout << "Input the number of bombs (1->"<< rows * cols<<"): ";
+				cin >> bombNumber;
+				if ( rows < 1 || rows > 99 || cols < 1 || cols > 99 || bombNumber > rows * cols || bombNumber < 1) cout << "Invalid input. Please type again" << endl;
+				else break;
+			}
+			ClearScreen();
+			return Grid(rows, cols, bombNumber);
+		}
+		else cout<<"Invalid" << endl;
 	}
-}
+		
+	}
 
 string Command() {
 	string command;
@@ -357,13 +390,9 @@ COORD GetConsoleCursorPosition(HANDLE hConsoleOutput)
 		return invalid;
 	}
 }
-void gotoxy(int x, int y) {
-	COORD pos = { x, y };
-	HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
-	SetConsoleCursorPosition(output, pos);
-}
+
 bool KeyEventProc(Grid* grid)
-{	
+{
 	//xStart=9,yStart=3
 	//0,0:9,3
 	//1,0=9,5
@@ -371,10 +400,10 @@ bool KeyEventProc(Grid* grid)
 	//=>(x-9)/6=col
 	//<=>col*6+9=x
 	COORD pos = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
-	if (GetKeyState(VK_RIGHT) & 0x8000) { gotoxy(min(pos.X + 6,(grid->cols-1)*6+9), pos.Y); }
-	if (GetKeyState(VK_LEFT) & 0x8000) { gotoxy(max(pos.X - 6,9), pos.Y); }
-	if (GetKeyState(VK_UP) & 0x8000) { gotoxy(pos.X, max(pos.Y - 2,3)); }
-	if (GetKeyState(VK_DOWN) & 0x8000) { gotoxy(pos.X, min(pos.Y + 2,(grid->rows-1)*2+3)); }
+	if (GetKeyState(VK_RIGHT) & 0x8000) { gotoxy(min(pos.X + 6, (grid->cols - 1) * 6 + 9), pos.Y); }
+	if (GetKeyState(VK_LEFT) & 0x8000) { gotoxy(max(pos.X - 6, 9), pos.Y); }
+	if (GetKeyState(VK_UP) & 0x8000) { gotoxy(pos.X, max(pos.Y - 2, 3)); }
+	if (GetKeyState(VK_DOWN) & 0x8000) { gotoxy(pos.X, min(pos.Y + 2, (grid->rows - 1) * 2 + 3)); }
 	if (GetKeyState('R') & 0x8000) {
 		int row = (pos.Y - 3) / 2;
 		int col = (pos.X - 9) / 6;
@@ -384,7 +413,7 @@ bool KeyEventProc(Grid* grid)
 	if (GetKeyState('F') & 0x8000) {
 		int row = (pos.Y - 3) / 2;
 		int col = (pos.X - 9) / 6;
-		grid->flag[row][col]=true;
+		grid->flag[row][col] = true;
 		return true;
 	}
 	if (GetKeyState('S') & 0x8000) {
@@ -398,18 +427,36 @@ bool KeyEventProc(Grid* grid)
 	return false;
 }
 
-void gameByCommand();
-void gameByKey();
-void Game() {
-	string choice;
-	cout << "Do you want to navigate by command or by keyboard?(c/k) : ";
-	cin >> choice;
-	if (choice == "c") gameByCommand();
-	else if (choice == "k") gameByKey();
-	else cout << "Invalid" << endl;
-	
+void gameByCommand(Grid grid);
+void gameByKey(Grid grid);
+void setTimerSinglethreaded(double time) {
+	COORD oldCoord;
+	oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
+	gotoxy(66, 0);
+	cout << fixed << time<< setprecision(5);
+	gotoxy(oldCoord.X, oldCoord.Y);
+	return;
 }
-void gameByCommand() {
+
+void setTimerMultithreaded(clock_t start) {
+	//printf("----------------------------------------------------------Timer :       ----------------------------------------------------------");
+	this_thread::sleep_for(500ms);
+	COORD oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
+	
+	while (true) {
+		if (exitFlag) { return; }
+		mu.lock();
+		gotoxy(0, 0);
+		clock_t now = clock();
+		printf( "---------------------------------------------------------- Timer : %5.3f ----------------------------------------------------------", ((double)now - (double)start) / (double)CLOCKS_PER_SEC);
+		gotoxy(oldCoord.X, oldCoord.Y);
+		mu.unlock();
+		this_thread::sleep_for(1000ms);
+		oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
+	}
+
+}
+void Game() {
 	Grid grid;
 	FILE* stream;
 	string ans;
@@ -433,21 +480,49 @@ void gameByCommand() {
 	else {
 		grid = Introduction();
 	}
-	ClearScreen();
-	string command;
-	clock_t prev, now;
-	prev = clock();
+	
+	string choice;
+	cout << "Do you want to navigate by command or by keyboard?(c/k) : ";
 	while (true) {
-		now = clock();
-		double gap = ((double)now - (double)prev) / double(CLOCKS_PER_SEC);
-		cout << "----------------------------------------------------------Timer : " << fixed << gap << setprecision(5) << "----------------------------------------------------------" << endl;
+		cin >> choice;
+		if (choice == "c") {
+			ClearScreen();
+			exitFlag = false;
+			thread t1(setTimerMultithreaded, clock());
+			thread t2(gameByCommand, grid);
+			t1.join();
+			t2.join();
+		}
+		else if (choice == "k") gameByKey(grid);
+		else cout << "Invalid. Please type again(c/k) :";
+	}
+
+}
+
+
+
+void gameByCommand(Grid grid) {
+	this_thread::sleep_for(200ms);
+	string command,ans;
+	clock_t prev, now;
+	while (true) {
+		gotoxy(0, 1);
 		grid.printGridCurrent();
 		if (grid.checkLose()) {
 			cout << "Aha , seems like you have lose. Do you want to play a new game? (y/n) ";
 			while (true) {
 				cin >> ans;
-				if (ans == "y") Game();
-				else if (ans == "n") exit(0);
+				if (ans == "y") { 
+					exitFlag = true;
+					this_thread::sleep_for(100ms);
+					ClearScreen(); 
+					Game(); 
+				}
+				else if (ans == "n") { 
+					exitFlag = true;
+					this_thread::sleep_for(100ms);
+					exit(0); 
+				}
 				else {
 					cout << endl << "Invalid input. Please type again(y/n) : ";
 				}
@@ -464,7 +539,9 @@ void gameByCommand() {
 				}
 			}
 		}
-		command = Command();
+		cout << "List of commands :\n-  Reveal square(r)\n-  Set flag(f)\n-  New game(n)\n-  Save and quit(s)\n";
+		cout << "Please type your command : ";
+		cin >> command;
 		if (command == "f") {
 			setFlag(&grid);
 		}
@@ -472,6 +549,7 @@ void gameByCommand() {
 			revealSquare(&grid);
 		}
 		else if (command == "n") {
+			exitFlag = true;
 			ClearScreen();
 			Game();
 		}
@@ -482,42 +560,13 @@ void gameByCommand() {
 		else {
 			cout << "Command invalid" << endl;
 		}
-		ClearScreen();
+		ClearLines(GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE)),8);
 	}
 }
-void setTimer(double time) {
-	COORD oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
-	gotoxy(66, 0);
-	cout << fixed << time << setprecision(5);
-	gotoxy(oldCoord.X, oldCoord.Y);
-	return;
-}
-void gameByKey() {
-	Grid grid;
-	FILE* stream;
-	string ans;
-	if (isExist("save.txt")) {
-		cout << "Found a game save from last time. Do you want to continue from save?(y/n)";
-		while (true) {
-			cin >> ans;
-			if (ans == "y") {
-				grid = loadGameSave();
-				break;
-			}
-			else if (ans == "n") {
-				grid = Introduction();
-				break;
-			}
-			else {
-				cout << endl << "Invalid input. Please type again(y/n) : ";
-			}
-		}
-	}
-	else {
-		grid = Introduction();
-	}
+
+void gameByKey(Grid grid) {
 	ClearScreen();
-	string command;
+	string command,ans;
 	clock_t prev, now;
 	prev = clock();
 	bool isChange = false;
@@ -526,7 +575,7 @@ void gameByKey() {
 	grid.printGridCurrent();
 	gotoxy(9, 3);
 	while (true) {
-		setTimer(((double)clock() - (double)prev) / double(CLOCKS_PER_SEC));
+		setTimerSinglethreaded(((double)clock() - (double)prev) / double(CLOCKS_PER_SEC));
 		if (isChange) {
 			COORD oldCoord = GetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE));
 			gotoxy(0, 1);
